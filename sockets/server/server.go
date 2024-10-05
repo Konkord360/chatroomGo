@@ -11,6 +11,7 @@ import (
 
 //	"strconv"
 	"sync"
+    
 )
 
 type Chatter struct {
@@ -38,31 +39,42 @@ type Message struct {
     timeSent time.Time
 }
 
+var db Sqlite
+
+var listener net.Listener
+
 func main() {
     numberOfChatters = 0
     var chatters []Chatter 
     var messages []Message
 
     server := Server{chatters, messages, sync.Mutex{}} 
-    listener := server.RunServer()
+    db = Sqlite{}
+    db.OpenDBConnection("./test.db")
+    defer db.db.Close()
+    server.RunServer()
     defer listener.Close()
 
     for {
-        newChatter := server.AddAChatter(listener)
+        newChatter := server.AddAChatter()
         go server.HandleClientConnection(newChatter)
     }
 }
 
-func (s *Server) AddAChatter(listener net.Listener) Chatter {
+func (s *Server) AddAChatter() Chatter {
     log.Println("Waiting for connection")
+    s.synchro.Lock()
     conn, err := listener.Accept()
     if err != nil {
         log.Fatalf("error accepting connection: %s", err)
     }
 
-    s.synchro.Lock()
     //newChatter := Chatter{"chatter " + strconv.Itoa(len(s.chatters) + 1), conn}
     newChatter := Chatter{fmt.Sprintf("chatter %d", numberOfChatters), conn}
+    if !db.CheckIfUserExists(newChatter.name) {
+        db.CreateUser(newChatter.name) 
+    }
+
     numberOfChatters++
     log.Printf("Chatter %s connected", newChatter.name)
 
@@ -74,16 +86,16 @@ func (s *Server) AddAChatter(listener net.Listener) Chatter {
     return newChatter
 }
 
-func (s *Server) RunServer() net.Listener {
+func (s *Server) RunServer() {
     runtime.GOMAXPROCS(runtime.NumCPU())
 
     log.Println("starting server")
-    listener, err := net.Listen("tcp", "localhost:1234")
+    list, err := net.Listen("tcp", "localhost:1234")
     if err != nil {
         log.Fatalf("error listening: %s", err)
     }
     log.Println("server is running")
-    return listener;
+    listener = list;
 }
 
 func (s *Server) HandleClientConnection(chatter Chatter) {

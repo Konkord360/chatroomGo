@@ -1,10 +1,13 @@
 package main
 
 import (
-    "log"
-    "net"
-    "sync"
-    "testing"
+	"fmt"
+	"log"
+	"net"
+    //"os"
+	//"os/exec"
+	"sync"
+	"testing"
 )
 
 
@@ -14,13 +17,13 @@ func TestAddAChatterExtendTheChatterSliceInTheServer(t *testing.T) {
     var chatHistory []Message
 
     server := Server{chatters, chatHistory, sync.Mutex{}}
-    listener := server.RunServer();
+    server.RunServer();
     defer listener.Close()
 
     wg.Add(1)
     go func(net.Listener) {
         defer wg.Done()
-        server.AddAChatter(listener)
+        server.AddAChatter()
     }(listener)
 
     conn, _ := net.Dial("tcp", "localhost:1234")
@@ -39,7 +42,7 @@ func TestAddingTwoChattersAtTheSameTimeAdsBothOfThemCorrectly(t *testing.T) {
     var chatHistory []Message
 
     server := Server{chatters, chatHistory, sync.Mutex{}}
-    listener := server.RunServer();
+    server.RunServer();
     defer listener.Close()
 
     log.Println("Adding chatters")
@@ -53,12 +56,12 @@ func TestAddingTwoChattersAtTheSameTimeAdsBothOfThemCorrectly(t *testing.T) {
 
     go func() {
         defer wg.Done()
-        server.AddAChatter(listener)
+        server.AddAChatter()
     }()
 
     go func() {
         defer wg.Done()
-        server.AddAChatter(listener)
+        server.AddAChatter()
     }()
 
     wg.Wait()
@@ -72,33 +75,30 @@ func TestAddingTwoChattersAtTheSameTimeAdsBothOfThemCorrectly(t *testing.T) {
 func TestAddingChattersWithTwoTousandConnections(t *testing.T) {
     var chatters []Chatter 
     var chatHistory []Message
-    var wg sync.WaitGroup
-    var wgRun sync.WaitGroup
-    expectedNumberOfChatters := 3000
-
+    expectedNumberOfChatters := 100000
     server := Server{chatters, chatHistory, sync.Mutex{}}
-    listener := server.RunServer();
+    server.RunServer();
     defer listener.Close()
+    //cmd := exec.Command("clear")
 
     log.Println("Adding chatters")
-    wg.Add(expectedNumberOfChatters)
-    wgRun.Add(expectedNumberOfChatters)
-
     for i := 0; i < expectedNumberOfChatters; i++ {
-        conn, _ := net.Dial("tcp", "localhost:1234")
+        //cmd.Stdout = os.Stdout
+        //err := cmd.Run() 
+        //if err != nil {
+        //    log.Print(err)
+        //}
+
+        conn, err := net.Dial("tcp", "localhost:1234")
+        if err != nil {
+            log.Panicf("Failed to establish connection %d, %v", i, err)
+        }
+        fmt.Print("\033[H\033[2J")
+        server.AddAChatter()
+        log.Printf("making connection %d", i)
         defer conn.Close()
     }
 
-    for i := 0; i < expectedNumberOfChatters; i++ {
-        go func() {
-            defer wg.Done()
-            wgRun.Done()
-            wgRun.Wait()
-            server.AddAChatter(listener)
-        }()
-    }
-
-    wg.Wait()
     numberOfChatters := len(server.chatters)
     if numberOfChatters != expectedNumberOfChatters {
         t.Fatalf("Expected number of chatters: %d, got %d", expectedNumberOfChatters, numberOfChatters)
