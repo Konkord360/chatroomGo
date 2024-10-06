@@ -23,6 +23,7 @@ type Server struct {
     chatters []Chatter
     messages []Message
     synchro sync.Mutex
+    db Sqlite
 
 }
 
@@ -39,8 +40,6 @@ type Message struct {
     timeSent time.Time
 }
 
-var db Sqlite
-
 var listener net.Listener
 
 func main() {
@@ -48,9 +47,15 @@ func main() {
     var chatters []Chatter 
     var messages []Message
 
-    server := Server{chatters, messages, sync.Mutex{}} 
+    var server Server 
+    server.db = Sqlite{}
+    server.db.OpenDBConnection("./test.db")
+    server.chatters = chatters
+    server.messages = messages
+    server.synchro = sync.Mutex{}
+
     server.RunServer()
-    defer db.db.Close()
+    defer server.db.db.Close()
     defer listener.Close()
 
     for {
@@ -78,12 +83,12 @@ func (s *Server) AddAChatter() Chatter {
     newChatter.name = strings.TrimRight(data, "\n")
     s.WriteToChatter(fmt.Sprintf("Connected to chatroom as %s:\n", newChatter.name), newChatter)
 
-    if !db.CheckIfUserExists(newChatter.name) {
+    if !s.db.CheckIfUserExists(newChatter.name) {
         fmt.Printf("Creating new user %s\n", newChatter.name)
-        db.CreateUser(newChatter.name) 
+        s.db.CreateUser(newChatter.name) 
     } else {
         fmt.Printf("User found in database %s\n", newChatter.name)
-        db.getUser(newChatter.name)
+        s.db.getUser(newChatter.name)
     }
 
 
@@ -101,8 +106,6 @@ func (s *Server) AddAChatter() Chatter {
 func (s *Server) RunServer() {
     runtime.GOMAXPROCS(runtime.NumCPU())
 
-    db = Sqlite{}
-    db.OpenDBConnection("./test.db")
 
     log.Println("starting server")
     list, err := net.Listen("tcp", "localhost:1234")
