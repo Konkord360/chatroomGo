@@ -15,13 +15,15 @@ import (
     "testing"
 )
 
+const testDatabase = "file:./test.db"
+
 func TestAddAChatterExtendTheChatterSliceInTheServer(t *testing.T) {
     var chatters []Chatter 
     var wg sync.WaitGroup
     var chatHistory []Message
 
     server := Server{chatters, chatHistory, sync.Mutex{}, Sqlite{}}
-    server.db.OpenDBConnection("./test.db")
+    server.db.OpenDBConnection(testDatabase)
     server.RunServer();
     defer listener.Close()
 
@@ -44,6 +46,7 @@ func TestAddAChatterExtendTheChatterSliceInTheServer(t *testing.T) {
     if numberOfChatters != 1 {
         t.Fatalf("Expected number of chatters: %d, got %d", 1, numberOfChatters)
     }
+    server.db.ClearTable("User")
 }
 
 func TestAddingTwoChattersAtTheSameTimeAdsBothOfThemCorrectly(t *testing.T) {
@@ -52,7 +55,7 @@ func TestAddingTwoChattersAtTheSameTimeAdsBothOfThemCorrectly(t *testing.T) {
     var chatHistory []Message
 
     server := Server{chatters, chatHistory, sync.Mutex{}, Sqlite{}}
-    server.db.OpenDBConnection("./test.db")
+    server.db.OpenDBConnection(testDatabase)
     server.RunServer();
     defer listener.Close()
 
@@ -88,6 +91,7 @@ func TestAddingTwoChattersAtTheSameTimeAdsBothOfThemCorrectly(t *testing.T) {
     if numberOfChatters != 2 {
         t.Fatalf("Expected number of chatters: %d, got %d", 2, numberOfChatters)
     }
+    server.db.ClearTable("User")
 }
 
 func TestAddingChattersWithTwoTousandConnections(t *testing.T) {
@@ -95,7 +99,7 @@ func TestAddingChattersWithTwoTousandConnections(t *testing.T) {
     var chatHistory []Message
     expectedNumberOfChatters := 500
     server := Server{chatters, chatHistory, sync.Mutex{}, Sqlite{}}
-    server.db.OpenDBConnection("./test.db")
+    server.db.OpenDBConnection(testDatabase)
     server.RunServer();
     defer listener.Close()
 
@@ -120,4 +124,5 @@ func TestAddingChattersWithTwoTousandConnections(t *testing.T) {
     if numberOfChatters != expectedNumberOfChatters {
         t.Fatalf("Expected number of chatters: %d, got %d", expectedNumberOfChatters, numberOfChatters)
     }
+    server.db.ClearTable("User")
 }

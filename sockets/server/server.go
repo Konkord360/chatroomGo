@@ -49,7 +49,7 @@ func main() {
 
     var server Server 
     server.db = Sqlite{}
-    server.db.OpenDBConnection("./test.db")
+    server.db.OpenDBConnection("file:./prodChatroom.db")
     server.chatters = chatters
     server.messages = messages
     server.synchro = sync.Mutex{}
@@ -106,6 +106,12 @@ func (s *Server) AddAChatter() Chatter {
 func (s *Server) RunServer() {
     runtime.GOMAXPROCS(runtime.NumCPU())
 
+    if !s.db.CheckIfTableExist("User") {
+        log.Println("Required tables are missing. Trying to create them")
+        s.db.CreateTables()
+        log.Println("Tables created successfully")
+    }
+    log.Println("Required tables are ready")
 
     log.Println("starting server")
     list, err := net.Listen("tcp", "localhost:1234")

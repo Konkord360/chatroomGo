@@ -3,6 +3,8 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"log"
+	"strings"
 
 	_ "modernc.org/sqlite"
 )
@@ -16,12 +18,39 @@ type User struct {
     username string
 }
 
+func (s *Sqlite) CreateTables() {
+    userTableStatement := "CREATE TABLE User (username string)"
+    _, err := s.db.Exec(userTableStatement)
+    if err != nil {
+        log.Fatalf("Error creating tables")
+    }
+}
+
+func (s *Sqlite) ClearTable(tableName string) {
+    if strings.ToLower(tableName) == "user" {
+        statement := "DELETE FROM USER"
+        _, err := s.db.Exec(statement, tableName)
+        if err != nil {
+            log.Fatalf("Error deleting data from table %v", err)
+        }
+    }
+}
+
+func (s *Sqlite) CheckIfTableExist(tableName string) bool {
+    statement := "SELECT name from SQLITE_MASTER WHERE type='table' AND name=?"
+    var result string
+    err := s.db.QueryRow(statement, tableName).Scan(&result)
+    if err != nil {
+        log.Println("Error querying mastser table")
+    }
+    return result == tableName
+}
+
 func (s *Sqlite) OpenDBConnection(path string) {
     db, err := sql.Open("sqlite", path)
     if err != nil {
-        fmt.Println(err)
+        log.Fatalln(err)
     }
-
     s.db = db
 }
 
@@ -36,7 +65,7 @@ func (s *Sqlite) CheckIfUserExists(username string) bool {
 }
 
 func (s *Sqlite) CreateUser(username string) bool {
-    statement := "INSERT INTO USER(username, id) VALUES(?, 1)"
+    statement := "INSERT INTO USER(username) VALUES(?)"
     result, err := s.db.Exec(statement, username)
     if err != nil {
         fmt.Printf("Error inserting user %s\n", username)
@@ -54,9 +83,4 @@ func (s *Sqlite) getUser(username string) User{
         fmt.Println(error)
     }
     return user
-}
-
-func executeStatement(statement string) bool {
-
-    return true;
 }
