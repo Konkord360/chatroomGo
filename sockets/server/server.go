@@ -7,11 +7,11 @@ import (
 	"log"
 	"net"
 	"runtime"
+	"strings"
 	"time"
 
-//	"strconv"
+	//	"strconv"
 	"sync"
-    
 )
 
 type Chatter struct {
@@ -49,10 +49,8 @@ func main() {
     var messages []Message
 
     server := Server{chatters, messages, sync.Mutex{}} 
-    db = Sqlite{}
-    db.OpenDBConnection("./test.db")
-    defer db.db.Close()
     server.RunServer()
+    defer db.db.Close()
     defer listener.Close()
 
     for {
@@ -70,10 +68,24 @@ func (s *Server) AddAChatter() Chatter {
     }
 
     //newChatter := Chatter{"chatter " + strconv.Itoa(len(s.chatters) + 1), conn}
+
     newChatter := Chatter{fmt.Sprintf("chatter %d", numberOfChatters), conn}
-    if !db.CheckIfUserExists(newChatter.name) {
-        db.CreateUser(newChatter.name) 
+    s.WriteToChatter("Provide username:\n", newChatter)
+    data, err := bufio.NewReader(newChatter.connection).ReadString('\n')
+    if err != nil {
+        log.Fatalf("Error reading username")
     }
+    newChatter.name = strings.TrimRight(data, "\n")
+    s.WriteToChatter(fmt.Sprintf("Connected to chatroom as %s:\n", newChatter.name), newChatter)
+
+    if !db.CheckIfUserExists(newChatter.name) {
+        fmt.Printf("Creating new user %s\n", newChatter.name)
+        db.CreateUser(newChatter.name) 
+    } else {
+        fmt.Printf("User found in database %s\n", newChatter.name)
+        db.getUser(newChatter.name)
+    }
+
 
     numberOfChatters++
     log.Printf("Chatter %s connected", newChatter.name)
@@ -89,6 +101,9 @@ func (s *Server) AddAChatter() Chatter {
 func (s *Server) RunServer() {
     runtime.GOMAXPROCS(runtime.NumCPU())
 
+    db = Sqlite{}
+    db.OpenDBConnection("./test.db")
+
     log.Println("starting server")
     list, err := net.Listen("tcp", "localhost:1234")
     if err != nil {
@@ -101,6 +116,7 @@ func (s *Server) RunServer() {
 func (s *Server) HandleClientConnection(chatter Chatter) {
     log.Println("reading from the client")
 
+    //TODO move reader and write to the chatter. 
     for {
         data, err := bufio.NewReader(chatter.connection).ReadString('\n')
         if err != nil {
@@ -144,6 +160,15 @@ func (s *Server) Broadcast(message string, chatter Chatter) {
                 log.Println("error broadcasting message: ", err)
             }
         }
+    }
+}
+
+func (s *Server) WriteToChatter(message string, chatter Chatter) {
+    log.Println("Waiting for user to provide username")
+    _, err := io.WriteString(chatter.connection, message)
+    log.Printf("Writing %s to conn %v\n", message, chatter.connection)
+    if err != nil {
+        log.Println("error writing message to the chatter: ", err)
     }
 }
 
