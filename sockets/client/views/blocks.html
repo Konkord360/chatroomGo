@@ -1,0 +1,57 @@
+{{ block "index" . }}
+<html>
+    <head>
+        <title></title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, inital-scale=1">
+        <script src="https://unpkg.com/htmx.org/dist/htmx.js"></script>
+    </head>
+    <body>
+        {{ template "form" .Form }}
+        <hr/>
+        {{ template "display" .Data }}
+    </body>
+    <script>
+        document.addEventListener("DOMContentLoaded", (event) => {
+            document.body.addEventListener('htmx:beforeSwap', function(evt) {
+                if(evt.detail.xhr.status === 422) {
+                    evt.detail.shouldSwap = true;
+                    evt.detail.isError = false;
+                }
+            });
+        })
+    </script>
+
+</html>
+{{ end }}
+
+
+{{ block "form" . }}
+<form hx-swap="outerHTML" hx-post="/contacts">
+
+    name: <input 
+    {{ if .Values.name }} value="{{ .Values.name }}" {{ end }}
+    type="text" name="name"/> 
+
+    email: <input 
+    {{ if .Values.email }} value="{{ .Values.email }}" {{ end }}
+    type="text" name="email"/>
+
+    {{ if .Errors.email }}
+    <div style="color: red"> {{ .Errors.email }} </div>
+    {{ end }}
+    <button type="submit"> Create Contact</button>
+</form>
+{{ end }}
+
+{{ block "display" . }}
+<div id="contacts" style="display: flex; flex-direction: column;">
+    {{ range .Contacts }}
+    <div>
+        Name: <span> {{ .Name }} </span>
+        Email: <span> {{ .Email }} </span>
+    </div>
+    {{ end }}
+</div>
+{{ end }}
+

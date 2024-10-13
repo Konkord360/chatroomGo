@@ -1,17 +1,18 @@
 package main
 
 import (
-	"bufio"
-	"fmt"
-	"io"
-	"log"
-	"net"
-	"runtime"
-	"strings"
-	"time"
+    "bufio"
+    "fmt"
+    "io"
+    "log"
+    "net"
+    "runtime"
+    "strings"
+    "time"
 
-	//	"strconv"
-	"sync"
+    //	"strconv"
+    "sync"
+
 )
 
 type Chatter struct {
