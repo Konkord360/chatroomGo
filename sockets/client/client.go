@@ -8,13 +8,15 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"strconv"
+
+	//	"net/http"
+	//	"strconv"
 
 	//"net/http"
 	"os"
 
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+    //"github.com/labstack/echo/v4/middleware"
 )
 
 var reader *bufio.Reader
@@ -112,15 +114,30 @@ func newPage() Page {
 }
 
 func main() {
-	e := echo.New()
-    e.Renderer = NewTemplates()
-    e.Use(middleware.Logger())
+    //e := echo.New()
+    //e.Renderer = NewTemplates()
+    //e.Use(middleware.Logger())
+
 
     page := newPage()
-    e.POST("/contacts", func(c echo.Context) error {
-        
-        name := c.FormValue("name")
-        email := c.FormValue("email")
+
+    tmpl := template.Must(template.ParseGlob("views/*.html"))
+
+    http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+        switch r.Method {
+        case http.MethodGet:
+            if err := tmpl.ExecuteTemplate(w, "index", page); err != nil {
+                http.Error(w, err.Error(), http.StatusInternalServerError)
+            }
+        }
+
+    })
+
+    http.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
+        name := r.FormValue("name")
+        fmt.Println(name)
+        email := r.FormValue("email")
+        fmt.Println(email)
         
         if page.Data.hasEmail(email) {
             formData := newFormData()
@@ -128,43 +145,55 @@ func main() {
             formData.Values["email"] = email
             formData.Errors["email"] = "Email already exists"
 
-            return c.Render(422, "form", formData)
+            if err := tmpl.ExecuteTemplate(w, "form", formData); err != nil {
+                http.Error(w, err.Error(), http.StatusInternalServerError)
+            }
         }
 
-        page.Data.Contacts = append(page.Data.Contacts, newContact(name, email))
-
-        return c.Render(200, "display", page)
+        contact := newContact(name, email)
+        page.Data.Contacts = append(page.Data.Contacts, contact)
+        tmpl.ExecuteTemplate(w, "form", newFormData())
+        tmpl.ExecuteTemplate(w, "oob-contact", contact)
     })
+    
+    //e.GET("/", func(c echo.Context) error {
+    //    return c.Render(200, "index", page)
+    //})
 
-    e.GET("/", func(c echo.Context) error {
-        return c.Render(200, "index", page)
-    })
+    //e.POST("/contacts", func(c echo.Context) error {
+    //    
+    //    name := c.FormValue("name")
+    //    fmt.Println(name)
+    //    email := c.FormValue("email")
+    //    fmt.Println(email)
+    //    
+    //    if page.Data.hasEmail(email) {
+    //        formData := newFormData()
+    //        formData.Values["name"] = name
+    //        formData.Values["email"] = email
+    //        formData.Errors["email"] = "Email already exists"
 
-    e.GET("/blocks", func(c echo.Context) error {
-        startStr := c.QueryParam("start")
-        start, err := strconv.Atoi(startStr)
-        if err != nil {
-            start = 0
-        }
+    //        return c.Render(422, "form", formData)
+    //    }
 
-        blocks := []Block{}
-        for i := start; i < start + 10; i++ {
-            blocks = append(blocks, Block{Id: i})
-        }
+    //    contact := newContact(name, email)
+    //    page.Data.Contacts = append(page.Data.Contacts, contact)
 
-        template := "blocks"
-        if start == 0 {
-            template = "blocks-index"
-        }
-        return c.Render(http.StatusOK, template, Blocks{
-            Start: start,
-            Next: start + 10,
-            More: start + 10 < 100,
-            Blocks: blocks,
-        });
-    });
+    //    c.Render(200, "form", newFormData())
+    //    return c.Render(200, "oob-contact", contact)
+    //})
 
-    e.Logger.Fatal(e.Start(":42069"))
+
+    //e.Logger.Fatal(e.Start(":42069"))
+    http.ListenAndServe(":42069", nil)
+}
+
+func testFunc(w http.ResponseWriter, r *http.Request) {
+    tmpl := template.Must(template.ParseGlob("views/*.html"))
+    formData := newFormData()
+    if err := tmpl.Execute(w, formData); err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+    }
 }
 
 func mainConsoleInput() {
