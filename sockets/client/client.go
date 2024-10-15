@@ -147,13 +147,15 @@ func main() {
 
             if err := tmpl.ExecuteTemplate(w, "form", formData); err != nil {
                 http.Error(w, err.Error(), http.StatusInternalServerError)
+                return
             }
-        }
+        } else {
 
-        contact := newContact(name, email)
-        page.Data.Contacts = append(page.Data.Contacts, contact)
-        tmpl.ExecuteTemplate(w, "form", newFormData())
-        tmpl.ExecuteTemplate(w, "oob-contact", contact)
+            contact := newContact(name, email)
+            page.Data.Contacts = append(page.Data.Contacts, contact)
+            tmpl.ExecuteTemplate(w, "form", newFormData())
+            tmpl.ExecuteTemplate(w, "oob-contact", contact)
+        }
     })
     
     //e.GET("/", func(c echo.Context) error {
